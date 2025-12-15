@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@700&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+    /* Deep space look */
+    font-family: 'Cinzel', serif;
+}
+
+#loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    color: #ffd700;
+    /* Gold */
+    transition: opacity 1s ease-out;
+}
+
+.spinner {
+    width: 80px;
+    height: 80px;
+    border: 4px solid rgba(255, 215, 0, 0.1);
+    border-top: 4px solid #ffd700;
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+    margin-bottom: 20px;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#loading-text {
+    font-size: 1.5rem;
+    text-align: center;
+    letter-spacing: 2px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* Main Title */
+#title-container {
+    position: absolute;
+    top: 5%;
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
+    z-index: 5;
+    mix-blend-mode: screen;
+}
+
+h1.merry-text {
+    font-family: 'Great Vibes', cursive;
+    background: linear-gradient(to right, #ff0000, #ff4d4d, #ffffff, #ff4d4d, #ff0000);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 6rem;
+    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
+    margin: 0;
+    animation: shimmer 3s infinite linear;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% center;
+    }
+
+    100% {
+        background-position: 200% center;
+    }
+}
+
+/* Camera (Small Top-Right) */
+#camera-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 160px;
+    height: 120px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    overflow: hidden;
+    z-index: 1000;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+#camera-container:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    border-color: #0f0;
+}
+
+#camera-feed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+/* --- SNOWFALL EFFECT --- */
+#snow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Click through */
+    z-index: 5;
+    /* Above video, below some UI */
+    overflow: hidden;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10vh;
+    color: white;
+    font-size: 1em;
+    opacity: 0.8;
+    user-select: none;
+    cursor: default;
+    /* Composite animation: Vertical Fall + Horizontal Sway */
+    animation-name: fall, sway;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-play-state: running, running;
+}
+
+@keyframes fall {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(110vh);
+    }
+}
+
+@keyframes sway {
+    0% {
+        transform: translateX(0px) rotate(0deg);
+    }
+
+    25% {
+        transform: translateX(20px) rotate(45deg);
+    }
+
+    50% {
+        transform: translateX(0px) rotate(90deg);
+    }
+
+    75% {
+        transform: translateX(-20px) rotate(135deg);
+    }
+
+    100% {
+        transform: translateX(0px) rotate(180deg);
+    }
+}

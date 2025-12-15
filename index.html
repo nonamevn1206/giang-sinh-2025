@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Christmas Morphing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <h3 id="loading-text">Loading Magic...<br>Please Allow Camera Access!</h3>
+    </div>
+
+    <!-- Title removed, now part of particles -->
+
+    <!-- Instructions Removed as requested -->
+
+    <!-- Real-time Status Monitor -->
+    <div id="snow-container"></div>
+    <div id="status-monitor"
+        style="position: absolute; bottom: 10px; left: 10px; color: #0f0; font-family: monospace; font-size: 12px; z-index: 100; pointer-events: none; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
+        <div>SYS: <span id="sys-status">INIT</span></div>
+        <div>CAM: <span id="cam-status">WAIT</span></div>
+        <div>HND: <span id="hand-status">NONE</span></div>
+    </div>
+
+    <div id="camera-container"><canvas id="camera-feed"></canvas></div>
+    <!-- 重要: autoplay muted playsinline prevents freezing -->
+    <video id="video-input" style="display:none" playsinline autoplay muted></video>
+
+    <!-- Libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <!-- Bloom -->
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
