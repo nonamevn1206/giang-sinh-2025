@@ -96,14 +96,12 @@ function init() {
         generateTextData();
         // Rose setup removed
         generateStarData();
-        // Snowflake removed
-        generateBoxData();
+        // Snowflake removed (Cleaned up)
         // Galaxy data gen removed
         generateKissData();
         // Combined Sleigh Scene
         generateSleighData();
-        // Call Love & Fireworks
-        generateLoveData();
+        // Love data removed
         generateFireworksData();
         // Load Gallery
         loadGallery();
@@ -151,37 +149,7 @@ function fillBuffer(source, count, posTarget, colTarget) {
     }
 }
 
-function generateBoxData() {
-    // Replaced Box with Special User Image
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.src = "special_image.jpg";
-    img.onload = () => {
-        processImageToBuffer(img, positionsBox, colorsBox);
-    };
-    img.onerror = () => {
-        console.warn("Special image not found, falling back to Box");
-        // Fallback to original box if image fails
-        const temp = [];
-        const size = 100;
-        for (let i = 0; i < 2000; i++) {
-            const face = Math.floor(Math.random() * 6);
-            let x, y, z;
-            const u = (Math.random() - 0.5) * 2 * size;
-            const v = (Math.random() - 0.5) * 2 * size;
-            if (face === 0) { x = size; y = u; z = v; }
-            else if (face === 1) { x = -size; y = u; z = v; }
-            else if (face === 2) { y = size; x = u; z = v; }
-            else if (face === 3) { y = -size; x = u; z = v; }
-            else if (face === 4) { z = size; x = u; y = v; }
-            else { z = -size; x = u; y = v; }
-            let color = { r: 1, g: 0, b: 0 };
-            if (Math.abs(u) < 20 || Math.abs(v) < 20) color = { r: 1, g: 0.84, b: 0 };
-            temp.push({ x, y, z, r: color.r, g: color.g, b: color.b });
-        }
-        fillBuffer(temp, CONFIG.particleCount, positionsBox, colorsBox);
-    };
-}
+// Galaxy generator removed
 
 function generateTreeData() {
     const temp = [];
@@ -298,36 +266,59 @@ function generateTreeData() {
 function generateHeartData() {
     const temp = [];
     const colorObj = new THREE.Color();
-
-    // Volumetric Heart (Concentric Layers)
-    for (let i = 0; i < CONFIG.particleCount; i++) {
-        // Random scale (0 to 1) for volume
-        // Math.pow(Math.random(), 0.5) pushes more particles to outer surface
-        const s = 0.2 + Math.random() * 0.8;
-
+    // 1. 3D VOLUMETRIC HEART (Outer Shell) - 3000 particles
+    const heartCount = 3000;
+    for (let i = 0; i < heartCount; i++) {
+        const s = 0.5 + Math.random() * 0.5; // Surface heavy
         const theta = Math.random() * Math.PI * 2;
-        // Heart Formula
         const hx = 16 * Math.pow(Math.sin(theta), 3);
         const hy = 13 * Math.cos(theta) - 5 * Math.cos(2 * theta) - 2 * Math.cos(3 * theta) - Math.cos(4 * theta);
-
-        // Scale x/y
-        const x = hx * 8 * s;
-        const y = hy * 8 * s;
-
-        // Z-axis volume (Puffy heart)
-        // Thickness decreases as we get to the edge of the heart shape to mimic rounded volume
-        // Or simple: thickness proportional to scale
-        const z = (Math.random() - 0.5) * 40 * s;
-
-        // Color Gradient:
-        // Inner (Low s) = Dark Red. Outer (High s) = Bright Pink/Red
-        const hue = 0.95 + (1 - s) * 0.05; // 0.95 (Red) to 1.0 (Red-Pink)
-        const light = 0.3 + s * 0.4; // 0.3 (Dark) to 0.7 (Bright)
-
-        colorObj.setHSL(hue, 1.0, light);
-
+        const x = hx * 12 * s; // Larger: * 12
+        const y = hy * 12 * s;
+        const z = (Math.random() - 0.5) * 60 * s;
+        // Color: Red/Pink
+        colorObj.setHSL(0.95 + (1 - s) * 0.05, 1.0, 0.4 + s * 0.3);
         temp.push({ x, y, z, r: colorObj.r, g: colorObj.g, b: colorObj.b });
     }
+
+    // 2. "I LOVE YOU" TEXT (Inside) - Remaining particles
+    const textCount = CONFIG.particleCount - heartCount;
+    const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 300;
+    const ctx = cvs.getContext('2d');
+    ctx.font = "bold 80px 'Arial', sans-serif";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("I LOVE", 300, 100);
+    ctx.fillText("YOU", 300, 200);
+    const data = ctx.getImageData(0, 0, 600, 300).data;
+
+    // Sample text pixels
+    const textParticles = [];
+    for (let y = 0; y < 300; y += 4) {
+        for (let x = 0; x < 600; x += 4) {
+            const i = (y * 600 + x) * 4;
+            if (data[i + 3] > 128) {
+                textParticles.push({
+                    x: (x - 300) * 0.8, // Smaller scale to fit inside
+                    y: -(y - 150) * 0.8 + 20, // Center vertically
+                    z: 20 // Slightly in front
+                });
+            }
+        }
+    }
+
+    // Fill text buffer
+    for (let i = 0; i < textCount; i++) {
+        const p = textParticles[i % textParticles.length];
+        if (p) {
+            // White/Gold Text
+            temp.push({ x: p.x, y: p.y, z: p.z, r: 1, g: 0.9, b: 0.5 });
+        } else {
+            // Fallback to heart center
+            temp.push({ x: 0, y: 0, z: 0, r: 1, g: 0, b: 0 });
+        }
+    }
+
     fillBuffer(temp, CONFIG.particleCount, positionsHeart, colorsHeart);
 }
 function generateTextData() { generateTextToBuffer("MERRY", "CHRISTMAS", positionsText, colorsText); }
@@ -386,60 +377,60 @@ function generateStarData() {
 
 
 function generateSleighData() {
-    // Composite Scene: Reindeer + Sleigh + Santa + Bag
-    const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 300;
-    const ctx = cvs.getContext('2d');
-
-    // Draw Reindeers (Left)
-    ctx.font = "100px serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("🦌", 100, 180); // Lead Reindeer
-    ctx.fillText("🦌", 200, 160); // Second Reindeer
-
-    // Draw Sleigh (Right)
-    ctx.font = "150px serif";
-    ctx.fillText("🛷", 400, 200);
-
-    // Draw Santa (In Sleigh)
-    ctx.font = "100px serif";
-    ctx.fillText("🎅", 420, 160); // Sitting in Sleigh
-
-    // Draw Gift Bag (Back)
-    ctx.font = "80px serif";
-    ctx.fillText("🎁", 520, 170); // Overflowing bag
-
-    // Draw Reins (Connection)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(140, 170); ctx.lineTo(350, 200); // Reindeer 1 to Sleigh
-    ctx.moveTo(240, 150); ctx.lineTo(350, 200); // Reindeer 2 to Sleigh
-    ctx.stroke();
-
-    const data = ctx.getImageData(0, 0, 600, 300).data;
-    const temp = [];
-    for (let y = 0; y < 300; y += 4) {
-        for (let x = 0; x < 600; x += 4) {
-            const i = (y * 600 + x) * 4;
-            if (data[i + 3] > 100) {
-                temp.push({
-                    x: (x - 300) * 2.0, // Scale up
-                    y: -(y - 150) * 2.0,
-                    z: 0,
-                    r: data[i] / 255, g: data[i + 1] / 255, b: data[i + 2] / 255
-                });
+    const img = new Image();
+    // Local file: remove crossOrigin to avoid potential CORS issues on some setups
+    // img.crossOrigin = "Anonymous"; 
+    img.src = "santa_sleigh.png";
+    img.onload = () => {
+        try {
+            const cvs = document.createElement('canvas');
+            const ctx = cvs.getContext('2d');
+            // Scale logic similar to processImageToBuffer but customized
+            const sc = 250 / Math.max(img.width, img.height);
+            cvs.width = img.width * sc; cvs.height = img.height * sc;
+            ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+            const data = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
+            const temp = [];
+            for (let y = 0; y < cvs.height; y += 3) {
+                for (let x = 0; x < cvs.width; x += 3) {
+                    const i = (y * cvs.width + x) * 4;
+                    // Lower threshold (20) to catch faint pixels
+                    // Also check for non-black pixels if transparent fails
+                    if (data[i + 3] > 20) {
+                        temp.push({
+                            x: (x - cvs.width / 2) * 2.5,
+                            y: -(y - cvs.height / 2) * 2.5 + 20, // Adjustment
+                            z: 0,
+                            r: data[i] / 255, g: data[i + 1] / 255, b: data[i + 2] / 255
+                        });
+                    }
+                }
             }
+            if (temp.length === 0) {
+                console.warn("Santa image processed but empty result.");
+                generateTextToBuffer("SANTA", "EMPTY", positionsSleigh, colorsSleigh);
+                return;
+            }
+            fillBuffer(temp, CONFIG.particleCount, positionsSleigh, colorsSleigh);
+            console.log("Santa Sleigh Loaded. Particles:", temp.length);
+        } catch (e) {
+            console.error("Santa Image Processing Error:", e);
+            generateTextToBuffer("SANTA", "ERROR", positionsSleigh, colorsSleigh);
         }
-    }
-    if (temp.length === 0) temp.push({ x: 0, y: 0, z: 0, r: 1, g: 0, b: 0 });
-    fillBuffer(temp, CONFIG.particleCount, positionsSleigh, colorsSleigh);
+    };
+    img.onerror = () => {
+        console.warn("Santa image failed to load.");
+        generateTextToBuffer("SANTA", "FAIL", positionsSleigh, colorsSleigh);
+    };
 }
 
 // Galaxy generator removed
 
 function generateKissData() { generateEmojiToBuffer("💏", positionsKiss, colorsKiss); }
 // Santa/Reindeer removed
-function generateLoveData() { generateTextToBuffer("I LOVE", "YOU", positionsLove, colorsLove); }
+function generateKissData() { generateEmojiToBuffer("💏", positionsKiss, colorsKiss); }
+// Santa/Reindeer removed
+// generateLoveData removed (Merged into Heart)
 
 function generateFireworksData() {
     const temp = [];
@@ -563,7 +554,15 @@ function createObjects() {
     }
     geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geom.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({ size: 5, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+    const mat = new THREE.PointsMaterial({
+        size: 12, // Increased for glow
+        map: createParticleTexture(),
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        transparent: true,
+        opacity: 0.9
+    });
     particles = new THREE.Points(geom, mat);
     scene.add(particles);
 
@@ -602,10 +601,12 @@ function detectGesture(lm, lm2) {
     if (fingersUpCount === 4 && lm[4].x > lm[3].x) return 'FOUR'; // Thumb In (Right Hand) - approx
     if (fingersUpCount >= 4 && lm[4].y < lm[3].y) return 'OPEN';
     if (wrist.y < indexTip.y && wrist.y < midTip.y) return 'DOWN';
-    if (dist(thumbTip, indexTip) < 0.08 && midUp && ringUp && pinkyUp) return 'OK'; // Kiss
-    if (dist(thumbTip, indexTip) < 0.08 && !midUp) return 'FINGER_HEART';
-    // SNAP: Thumb near Middle, Index Up (optional)
-    if (dist(thumbTip, midTip) < 0.06) return 'SNAP';
+
+    // INCREASED SENSITIVITY: 0.12 (was 0.08)
+    if (dist(thumbTip, indexTip) < 0.12 && midUp && ringUp && pinkyUp) return 'OK'; // Kiss
+    if (dist(thumbTip, indexTip) < 0.12 && !midUp) return 'FINGER_HEART';
+    // SNAP: Thumb near Middle. Increased to 0.10 (was 0.06)
+    if (dist(thumbTip, midTip) < 0.10) return 'SNAP';
     if (!indexUp && !midUp && !ringUp && !pinkyUp && lm[4].x < lm[3].x) return 'THUMB_UP'; // Santa
 
     return 'UNKNOWN';
@@ -739,6 +740,8 @@ function animate() {
         // Pulse Effect: Fast beat
         const pulse = 1 + Math.sin(Date.now() * 0.008) * 0.1 + Math.sin(Date.now() * 0.008 + Math.PI * 0.5) * 0.02;
         particles.scale.set(pulse, pulse, pulse);
+        // SHOOTING HEARTS EFFECT
+        if (Math.random() > 0.92) createFloatingHeart();
     } else if (currentShape !== 'SLEIGH') { // Sleigh logic might interfere otherwise
         particles.scale.set(1, 1, 1);
     }
@@ -774,17 +777,13 @@ function animate() {
                     // VICTORY ✌️ -> FIREWORKS 🎆
                     morphTo(positionsFireworks, colorsFireworks); currentShape = 'FIREWORKS';
 
-                } else if (lastGesture === 'ILY' && currentShape !== 'LOVE') {
-                    // ILY 🤟 -> I LOVE YOU 💖
-                    morphTo(positionsLove, colorsLove); currentShape = 'LOVE';
+                } else if (lastGesture === 'ILY' && currentShape !== 'HEART') {
+                    // ILY 🤟 -> HEART (with text)
+                    morphTo(positionsHeart, colorsHeart); currentShape = 'HEART';
 
                 } else if ((lastGesture === 'HEART_HANDS' || lastGesture === 'FINGER_HEART') && currentShape !== 'HEART') {
                     // HEART_HANDS 🫶 -> HEART ❤️
                     morphTo(positionsHeart, colorsHeart); currentShape = 'HEART';
-
-                } else if (lastGesture === 'FIST' && currentShape !== 'BOX') {
-                    // FIST ✊ -> BOX 🎁
-                    morphTo(positionsBox, colorsBox); currentShape = 'BOX';
 
                 } else if (lastGesture === 'OK' && currentShape !== 'TEXT') {
                     // OK 👌 -> TEXT "Merry Xmas" 📜
@@ -1032,3 +1031,27 @@ function tryPlayMusic() {
     }
 }
 interactions.forEach(evt => document.body.addEventListener(evt, tryPlayMusic));
+
+function createFloatingHeart() {
+    const h = document.createElement('div');
+    h.className = 'heart-particle';
+    h.innerText = '❤️';
+    h.style.left = (50 + (Math.random() - 0.5) * 20) + 'vw';
+    h.style.top = '50vh';
+    h.style.animationDuration = (2 + Math.random() * 2) + 's';
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 4000);
+}
+
+function createParticleTexture() {
+    const cvs = document.createElement('canvas'); cvs.width = 32; cvs.height = 32;
+    const ctx = cvs.getContext('2d');
+    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.4, 'rgba(255,255,255,0.4)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 32, 32);
+    const tex = new THREE.CanvasTexture(cvs);
+    return tex;
+}
