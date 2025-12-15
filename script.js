@@ -29,6 +29,7 @@ let positionsKiss = [], colorsKiss = [];
 // Santa/Reindeer removed
 let positionsLove = [], colorsLove = [];
 let positionsFireworks = [], colorsFireworks = []; // NEW
+let positionsSolar = [], colorsSolar = []; // NEW: Solar System
 let galleryBuffers = [];
 let currentGalleryIndex = 0;
 
@@ -41,9 +42,142 @@ let currentRotation = { x: 0, y: 0 };
 let targetRotation = { x: 0, y: 0 };
 let handsInstance;
 let lastWristX = 0;
+
 let lastSwipeTime = 0;
 
-// --- YOUTUBE MUSIC ---
+// --- VOICE CONTROLLER ---
+const voiceController = {
+    recognition: null,
+    isActive: false,
+
+    init() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            console.warn("Speech Recognition not supported");
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        this.recognition.lang = 'vi-VN';
+        this.recognition.continuous = true;
+        this.recognition.interimResults = false;
+
+        this.recognition.onresult = (event) => {
+            const last = event.results.length - 1;
+            const command = event.results[last][0].transcript.trim().toLowerCase();
+            console.log("Voice Command:", command);
+
+            // Voice Command Logic
+            if (command.includes('mở quà') || command.includes('open gift')) {
+                morphTo(positionsBox, colorsBox); currentShape = 'BOX';
+                setTimeout(() => { morphTo(positionsFireworks, colorsFireworks); currentShape = 'FIREWORKS'; }, 2000);
+            } else if (command.includes('hộp quà') || command.includes('box') || command.includes('gift')) {
+                morphTo(positionsBox, colorsBox); currentShape = 'BOX';
+            } else if (command.includes('mở') || command.includes('bung') || command.includes('open') || command.includes('bắn') || command.includes('start')) {
+                // Trigger Disperse/Fireworks
+                if (currentShape !== 'FIREWORKS') {
+                    morphTo(positionsFireworks, colorsFireworks);
+                    currentShape = 'FIREWORKS';
+                }
+            } else if (command.includes('cây') || command.includes('thông') || command.includes('noel') || command.includes('tree')) {
+                morphTo(positionsTree, colorsTree); currentShape = 'TREE';
+            } else if (command.includes('tim') || command.includes('yêu') || command.includes('love') || command.includes('heart')) {
+                morphTo(positionsHeart, colorsHeart); currentShape = 'HEART';
+            } else if (command.includes('mặt trời') || command.includes('vũ trụ') || command.includes('solar') || command.includes('hành tinh')) {
+                morphTo(positionsSolar, colorsSolar); currentShape = 'SOLAR';
+            } else if (command.includes('hôn') || command.includes('kiss') || command.includes('chụt')) {
+                morphTo(positionsKiss, colorsKiss); currentShape = 'KISS';
+            }
+        };
+
+        this.recognition.onend = () => {
+            if (this.isActive) this.recognition.start();
+        };
+
+        this.recognition.onerror = (e) => {
+            console.warn("Voice Error:", e.error);
+        };
+    },
+
+    start() {
+        if (!this.recognition) this.init();
+        if (this.recognition && !this.isActive) {
+            this.isActive = true;
+            try { this.recognition.start(); } catch (e) { }
+        }
+    },
+
+    stop() {
+        if (this.recognition && this.isActive) {
+            this.isActive = false;
+            this.recognition.stop();
+        }
+    }
+};
+
+// --- AUDIO CONTROLLER ---
+const audioController = {
+    ctx: null,
+    analyser: null,
+    source: null,
+    dataArray: null,
+    isActive: false,
+
+    async start() {
+        if (this.isActive) return;
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.source = this.ctx.createMediaStreamSource(stream);
+            this.analyser = this.ctx.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.source.connect(this.analyser);
+            this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+            this.isActive = true;
+            document.getElementById('mic-toggle').innerHTML = "🎤 CẢM BIẾN: BẬT";
+            document.getElementById('mic-toggle').classList.add('active');
+
+            // Start Voice Control too
+            voiceController.start();
+
+        } catch (e) {
+            console.error("Audio Init Error:", e);
+            alert("Lỗi truy cập micro hoặc thiết bị không hỗ trợ: " + e.message);
+        }
+    },
+
+    stop() {
+        if (!this.isActive) return;
+        if (this.source) {
+            this.source.disconnect();
+            this.source.mediaStream.getTracks().forEach(track => track.stop());
+        }
+        if (this.ctx) this.ctx.close();
+        this.isActive = false;
+        document.getElementById('mic-toggle').innerHTML = "🎤 CẢM BIẾN: TẮT";
+        document.getElementById('mic-toggle').classList.remove('active');
+
+        // Stop Voice Control
+        voiceController.stop();
+    },
+
+    toggle() {
+        if (this.isActive) this.stop();
+        else this.start();
+    },
+
+    getVolume() {
+        if (!this.isActive || !this.analyser) return 0;
+        this.analyser.getByteFrequencyData(this.dataArray);
+        let sum = 0;
+        // Focus on bass/mid frequencies for better beat detection
+        const limit = this.dataArray.length / 2;
+        for (let i = 0; i < limit; i++) {
+            sum += this.dataArray[i];
+        }
+        // Normalize 0-1 (approx)
+        return (sum / limit) / 255;
+    }
+};
 let player;
 window.onYouTubeIframeAPIReady = function () {
     console.log("YouTube API Ready");
@@ -103,6 +237,8 @@ function init() {
         generateSleighData();
         // Love data removed
         generateFireworksData();
+        generateSolarData(); // NEW
+        generateGiftBoxData(); // NEW: Gift Box
         // Load Gallery
         loadGallery();
         // Start App
@@ -135,6 +271,13 @@ function initApp() {
     createObjects();
     setupAI();
     createSnowflakes();
+    createSnowflakes();
+
+    // Audio Button Listener
+    document.getElementById('mic-toggle').addEventListener('click', () => {
+        audioController.toggle();
+    });
+
     animate();
 }
 
@@ -426,9 +569,22 @@ function generateSleighData() {
 
 // Galaxy generator removed
 
-function generateKissData() { generateEmojiToBuffer("💏", positionsKiss, colorsKiss); }
-// Santa/Reindeer removed
-function generateKissData() { generateEmojiToBuffer("💏", positionsKiss, colorsKiss); }
+// Galaxy generator removed
+
+function generateKissData() {
+    // Passionate Kiss: 💋 + Red Color override
+    generateEmojiToBuffer("💋", positionsKiss, colorsKiss);
+
+    // Override colors to be Deep Red/Pink because emoji colors can vary
+    for (let i = 0; i < colorsKiss.length; i += 3) {
+        if (colorsKiss[i] !== 0) { // If particle exists
+            const col = new THREE.Color().setHSL(0.95 + Math.random() * 0.05, 1.0, 0.4 + Math.random() * 0.3); // Red/Pink
+            colorsKiss[i] = col.r;
+            colorsKiss[i + 1] = col.g;
+            colorsKiss[i + 2] = col.b;
+        }
+    }
+}
 // Santa/Reindeer removed
 // generateLoveData removed (Merged into Heart)
 
@@ -462,6 +618,121 @@ function generateFireworksData() {
         }
     }
     fillBuffer(temp, CONFIG.particleCount, positionsFireworks, colorsFireworks);
+}
+
+function generateSolarData() {
+    const temp = [];
+
+    // 1. THE SUN (Center, large, yellow/orange)
+    const sunParticles = 1200;
+    for (let i = 0; i < sunParticles; i++) {
+        const r = Math.random() * 60; // Sun Radius
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
+
+        // Fire colors
+        const color = new THREE.Color();
+        if (Math.random() > 0.3) color.setHSL(0.05 + Math.random() * 0.1, 1.0, 0.5); // Orange/Yellow
+        else color.setHSL(0.0, 1.0, 0.4); // Reddish
+
+        temp.push({ x, y, z, r: color.r, g: color.g, b: color.b });
+    }
+
+    // 2. PLANETS & ORBITS
+    const planets = [
+        { r: 90, size: 4, color: [0.7, 0.7, 0.7] }, // Mercury (Gray)
+        { r: 120, size: 8, color: [0.9, 0.6, 0.2] }, // Venus (Yellow-ish)
+        { r: 160, size: 9, color: [0.2, 0.4, 1.0] }, // Earth (Blue)
+        { r: 200, size: 7, color: [1.0, 0.2, 0.1] }, // Mars (Red)
+        { r: 280, size: 25, color: [0.8, 0.7, 0.6] }, // Jupiter (Striped/Beige)
+        { r: 350, size: 20, color: [0.9, 0.8, 0.5], ring: true }, // Saturn (Pale Gold)
+        { r: 410, size: 15, color: [0.6, 0.8, 0.9] }, // Uranus (Cyan)
+        { r: 460, size: 14, color: [0.2, 0.2, 0.8] }  // Neptune (Dark Blue)
+    ];
+
+    planets.forEach(p => {
+        // Orbit Ring (Thin line of particles)
+        const orbitCount = 150;
+        for (let i = 0; i < orbitCount; i++) {
+            const angle = (i / orbitCount) * Math.PI * 2;
+            temp.push({
+                x: p.r * Math.cos(angle),
+                y: 0, // Flat plane
+                z: p.r * Math.sin(angle),
+                r: 0.3, g: 0.3, b: 0.3
+            });
+        }
+
+        // Planet Sphere
+        const planetParticles = p.size * 10;
+        // Random position along orbit
+        const planetAngle = Math.random() * Math.PI * 2;
+        const px = p.r * Math.cos(planetAngle);
+        const pz = p.r * Math.sin(planetAngle);
+
+        for (let i = 0; i < planetParticles; i++) {
+            const pr = Math.random() * p.size;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            temp.push({
+                x: px + pr * Math.sin(phi) * Math.cos(theta),
+                y: 0 + pr * Math.sin(phi) * Math.sin(theta),
+                z: pz + pr * Math.cos(phi),
+                r: p.color[0], g: p.color[1], b: p.color[2]
+            });
+        }
+
+        // Saturn Rings (Special Case)
+        if (p.ring) {
+            const ringParticles = 300;
+            for (let i = 0; i < ringParticles; i++) {
+                const ra = (p.size * 1.5) + Math.random() * 10;
+                const ang = Math.random() * Math.PI * 2;
+                temp.push({
+                    x: px + ra * Math.cos(ang),
+                    y: (Math.random() - 0.5) * 2, // Flat
+                    z: pz + ra * Math.sin(ang),
+                    r: 0.8, g: 0.7, b: 0.5
+                });
+            }
+        }
+    });
+
+    fillBuffer(temp, CONFIG.particleCount, positionsSolar, colorsSolar);
+}
+
+function generateGiftBoxData() {
+    const temp = [];
+    const boxSize = 250;
+    const half = boxSize / 2;
+    const ribbonWidth = 40;
+
+    for (let i = 0; i < CONFIG.particleCount; i++) {
+        const face = Math.floor(Math.random() * 6);
+        let x, y, z;
+        const u = (Math.random() - 0.5) * boxSize;
+        const v = (Math.random() - 0.5) * boxSize;
+        let isRibbon = false;
+
+        switch (face) {
+            case 0: x = u; y = v; z = half; if (Math.abs(x) < ribbonWidth / 2 || Math.abs(y) < ribbonWidth / 2) isRibbon = true; break;
+            case 1: x = u; y = v; z = -half; if (Math.abs(x) < ribbonWidth / 2 || Math.abs(y) < ribbonWidth / 2) isRibbon = true; break;
+            case 2: x = u; y = half; z = v; if (Math.abs(x) < ribbonWidth / 2 || Math.abs(z) < ribbonWidth / 2) isRibbon = true; break;
+            case 3: x = u; y = -half; z = v; if (Math.abs(x) < ribbonWidth / 2 || Math.abs(z) < ribbonWidth / 2) isRibbon = true; break;
+            case 4: x = half; y = u; z = v; if (Math.abs(y) < ribbonWidth / 2 || Math.abs(z) < ribbonWidth / 2) isRibbon = true; break;
+            case 5: x = -half; y = u; z = v; if (Math.abs(y) < ribbonWidth / 2 || Math.abs(z) < ribbonWidth / 2) isRibbon = true; break;
+        }
+
+        let r = 0.9, g = 0.1, b = 0.1; // Red Box
+        if (isRibbon) { r = 1; g = 0.84; b = 0; } // Gold Ribbon
+
+        temp.push({ x, y, z, r, g, b });
+    }
+    fillBuffer(temp, CONFIG.particleCount, positionsBox, colorsBox);
 }
 
 function generateEmojiToBuffer(emoji, targetPos, targetCol) {
@@ -571,6 +842,7 @@ function createObjects() {
 }
 
 // --- GESTURE LOGIC ---
+// --- GESTURE LOGIC ---
 function detectGesture(lm, lm2) {
     if (lm && lm2) {
         const i1 = lm[8], i2 = lm2[8];
@@ -583,31 +855,43 @@ function detectGesture(lm, lm2) {
     const midUp = lm[12].y < lm[10].y;
     const ringUp = lm[16].y < lm[14].y;
     const pinkyUp = lm[20].y < lm[18].y;
+
+    // --- SPECIAL SHAPES (Priority High) ---
+
+    // 1. PINCH / OK / KISS (Thumb touches Index)
+    // SENSITIVITY: 0.10
+    if (dist(thumbTip, indexTip) < 0.10) {
+        if (midUp && ringUp && pinkyUp) return 'OK'; // Classic OK
+        if (!midUp) return 'FINGER_HEART'; // Mini Heart
+    }
+
+    // 2. THUMB UP (Santa)
+    // Thumb tip is distinct, others curled
+    if (!indexUp && !midUp && !ringUp && !pinkyUp) {
+        // Check if thumb is sticking out to side/up
+        // Simple check: Thumb tip x is far from index base?
+        // Or just assume fist + thumb logic from before
+        if (lm[4].x < lm[3].x) return 'THUMB_UP';
+    }
+
+    // 3. ILY / SPIDER-MAN (Rock but with Thumb out)
     let fingersUpCount = 0;
     if (indexUp) fingersUpCount++; if (midUp) fingersUpCount++; if (ringUp) fingersUpCount++; if (pinkyUp) fingersUpCount++;
 
+    if (fingersUpCount === 2 && indexUp && pinkyUp) {
+        return 'ILY';
+    }
+
+    // --- SIMPLE COUNTS (Priority Low) ---
     if (fingersUpCount === 0) return 'FIST';
     if (fingersUpCount === 1 && indexUp) return 'ONE';
     if (fingersUpCount === 2 && indexUp && midUp) return 'VICTORY';
-
-    // ROCK (Thumb In) vs ILY (Thumb Out)
-    if (fingersUpCount === 2 && indexUp && pinkyUp) {
-        // Simple Thumb Check: is thumb tip far from index knuckle?
-        if (Math.hypot(lm[4].x - lm[5].x, lm[4].y - lm[5].y) > 0.1) return 'ILY';
-        else return 'ROCK'; // Usually Rock is 'Fist' but in some contexts standard rock is 2 fingers? Medipipe 'Rock' is usually index/pinky.
-    }
-
     if (fingersUpCount === 3) return 'THREE';
-    if (fingersUpCount === 4 && lm[4].x > lm[3].x) return 'FOUR'; // Thumb In (Right Hand) - approx
-    if (fingersUpCount >= 4 && lm[4].y < lm[3].y) return 'OPEN';
-    if (wrist.y < indexTip.y && wrist.y < midTip.y) return 'DOWN';
+    if (fingersUpCount === 4) return 'FOUR';
+    if (fingersUpCount >= 4) return 'OPEN'; // 4 or 5
 
-    // INCREASED SENSITIVITY: 0.12 (was 0.08)
-    if (dist(thumbTip, indexTip) < 0.12 && midUp && ringUp && pinkyUp) return 'OK'; // Kiss
-    if (dist(thumbTip, indexTip) < 0.12 && !midUp) return 'FINGER_HEART';
-    // SNAP: Thumb near Middle. Increased to 0.10 (was 0.06)
-    if (dist(thumbTip, midTip) < 0.10) return 'SNAP';
-    if (!indexUp && !midUp && !ringUp && !pinkyUp && lm[4].x < lm[3].x) return 'THUMB_UP'; // Santa
+    // Down check
+    if (wrist.y < indexTip.y && wrist.y < midTip.y) return 'DOWN';
 
     return 'UNKNOWN';
 }
@@ -743,7 +1027,20 @@ function animate() {
         // SHOOTING HEARTS EFFECT
         if (Math.random() > 0.92) createFloatingHeart();
     } else if (currentShape !== 'SLEIGH') { // Sleigh logic might interfere otherwise
-        particles.scale.set(1, 1, 1);
+        // AUDIO REACTIVITY
+        let beat = 1;
+        if (audioController.isActive) {
+            const vol = audioController.getVolume();
+            // Scale based on volume: Base 1, Max 1.3
+            beat = 1 + vol * 0.5;
+
+            // Allow manual sensitivity adjustment if needed, currently hardcoded
+            if (vol > 0.1) {
+                // Jitter effect on loud beats
+                particles.rotation.z += 0.01 * vol;
+            }
+        }
+        particles.scale.set(beat, beat, beat);
     }
 
     if (particles) {
@@ -784,10 +1081,18 @@ function animate() {
                 } else if ((lastGesture === 'HEART_HANDS' || lastGesture === 'FINGER_HEART') && currentShape !== 'HEART') {
                     // HEART_HANDS 🫶 -> HEART ❤️
                     morphTo(positionsHeart, colorsHeart); currentShape = 'HEART';
+                } else if (lastGesture === 'FOUR' && currentShape !== 'SOLAR') {
+                    // FOUR 🖐️ (without thumb) -> SOLAR SYSTEM ☀️
+                    morphTo(positionsSolar, colorsSolar); currentShape = 'SOLAR';
 
-                } else if (lastGesture === 'OK' && currentShape !== 'TEXT') {
-                    // OK 👌 -> TEXT "Merry Xmas" 📜
-                    morphTo(positionsText, colorsText); currentShape = 'TEXT';
+                } else if (lastGesture === 'OK' && currentShape !== 'KISS') {
+                    // OK 👌 -> KISS 💋
+                    morphTo(positionsKiss, colorsKiss); currentShape = 'KISS';
+
+
+                } else if (lastGesture === 'FIST' && currentShape !== 'BOX') {
+                    // FIST ✊ -> GIFT BOX 🎁
+                    morphTo(positionsBox, colorsBox); currentShape = 'BOX';
 
                 } else if (lastGesture === 'THREE' && currentShape !== 'IMAGE') {
                     // THREE 🤟 -> GALLERY IMAGE 🖼️
