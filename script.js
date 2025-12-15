@@ -28,6 +28,7 @@ let positionsBox = [], colorsBox = [];
 let positionsKiss = [], colorsKiss = [];
 // Santa/Reindeer removed
 let positionsLove = [], colorsLove = [];
+let positionsFireworks = [], colorsFireworks = []; // NEW
 let galleryBuffers = [];
 let currentGalleryIndex = 0;
 
@@ -41,6 +42,49 @@ let targetRotation = { x: 0, y: 0 };
 let handsInstance;
 let lastWristX = 0;
 let lastSwipeTime = 0;
+
+// --- YOUTUBE MUSIC ---
+let player;
+window.onYouTubeIframeAPIReady = function () {
+    console.log("YouTube API Ready");
+    player = new YT.Player('youtube-audio', {
+        height: '0',
+        width: '0',
+        videoId: 'ieVctH14vAA',
+        playerVars: {
+            'autoplay': 1,
+            'controls': 0,
+            'loop': 1,
+            // 'origin': window.location.origin, // Sometimes helps with CORS
+            'playlist': 'ieVctH14vAA' // Required for loop
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError // Add Error Handling
+        }
+    });
+};
+
+function onPlayerReady(event) {
+    console.log("Player Ready, attempting play");
+    event.target.playVideo();
+    event.target.setVolume(50);
+}
+
+function onPlayerStateChange(event) {
+    if (event.data === 0) { // Check if ended
+        player.playVideo(); // Force Loop
+    }
+}
+
+function onPlayerError(event) {
+    console.error("YouTube Player Error:", event.data);
+    // Error 150/101 = Not Embeddable/Ownershit Restricted
+    if (event.data === 150 || event.data === 101) {
+        alert("Audio Error: This specific song blocks embedding. Please choose another.");
+    }
+}
 
 // --- INITIALIZATION ---
 function init() {
@@ -58,8 +102,9 @@ function init() {
         generateKissData();
         // Combined Sleigh Scene
         generateSleighData();
-        // Santa/Reindeer removed
+        // Call Love & Fireworks
         generateLoveData();
+        generateFireworksData();
         // Load Gallery
         loadGallery();
         // Start App
@@ -143,9 +188,10 @@ function generateTreeData() {
     const colorObj = new THREE.Color();
 
     // Partitioning particles
-    const foliageCount = 4500;
+    const foliageCount = 4300; // Reduced for Star
+    const starCount = 400; // Reserved for Star
     const lightCount = 500;
-    const giftCount = CONFIG.particleCount - foliageCount - lightCount; // ~1000
+    const giftCount = CONFIG.particleCount - foliageCount - lightCount - starCount;
 
     // 1. REALISTIC FOLIAGE (Layers with Gaps + SNOW + ORNAMENTS)
     const layers = 6;
@@ -154,46 +200,65 @@ function generateTreeData() {
 
     for (let i = 0; i < foliageCount; i++) {
         const layerIndex = Math.floor(Math.random() * layers);
-        const layerBaseY = -CONFIG.treeHeight / 2 + (layerIndex * layerStep);
+        const yBase = -CONFIG.treeHeight / 2 + layerIndex * layerStep;
 
-        const t = Math.random();
-        const y = layerBaseY + t * layerConeHeight;
+        // Cone shape logic
+        const h = Math.random() * layerConeHeight;
+        const maxR = CONFIG.treeRadius * (1 - (layerIndex / (layers - 1))); // Tapering
+        const r = Math.random() * maxR * (1 - h / layerConeHeight);
 
-        const globalTaper = 1 - ((y + CONFIG.treeHeight / 2) / CONFIG.treeHeight);
-        const layerTaper = 1 - t;
-
-        // Add some noise to radius for fluffiness
-        const r = CONFIG.treeRadius * globalTaper * layerTaper * (0.8 + Math.random() * 0.4);
         const theta = Math.random() * Math.PI * 2;
+        const x = r * Math.sin(theta);
+        const y = yBase + h;
+        const z = r * Math.cos(theta);
 
-        const x = r * Math.cos(theta);
-        const z = r * Math.sin(theta);
+        // Mix Green and Snowy White
+        let color = new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.2 + Math.random() * 0.3);
+        if (Math.random() > 0.85) color.setHex(0xffffff); // Snow on leaves
 
-        // COLOR LOGIC
-        const radiusRatio = r / (CONFIG.treeRadius * globalTaper + 0.1);
-
-        // Snow Tips: If near the outer edge (radiusRatio > 0.9) AND high up the layer (t < 0.3)
-        // Upper part of branches gets snow
-        if (radiusRatio > 0.85 && t < 0.4) {
-            colorObj.setHex(0xffffff); // Snow White
-        } else if (Math.random() < 0.05 && radiusRatio > 0.6) {
-            // Ornaments (5% chance on outer branches)
-            const ornamentColor = Math.random();
-            if (ornamentColor < 0.33) colorObj.setHex(0xff0000); // Red Ball
-            else if (ornamentColor < 0.66) colorObj.setHex(0xffd700); // Gold Ball
-            else colorObj.setHex(0x0000ff); // Blue Ball
-        } else {
-            // Standard Green Foliage
-            const lightness = 0.3 + Math.random() * 0.4;
-            colorObj.setHSL(0.33, 1.0, lightness);
-            // Force pure green for non-snow outer tips
-            if (radiusRatio > 0.8) colorObj.setHex(0x00ff00);
-        }
-
-        temp.push({ x, y, z, r: colorObj.r, g: colorObj.g, b: colorObj.b });
+        temp.push({ x, y, z, r: color.r, g: color.g, b: color.b });
     }
 
-    // 2. SPIRAL LIGHTS (Helix - Adjusted for Scale)
+    // 2. PARTICLE STAR AT TOP (New Topper)
+    const starY = CONFIG.treeHeight / 2 + 20;
+    for (let i = 0; i < starCount; i++) {
+        // Logic: 5-Pointed Star Shape
+        const starA = Math.random() * Math.PI * 2;
+        const outerR = 35;
+        const innerR = 15;
+
+        let rMax = innerR;
+        const segment = Math.PI * 2 / 5;
+        // Find nearest point
+        const topOff = Math.PI / 2;
+        // Normalize angle
+        let normA = starA % (Math.PI * 2);
+        if (normA < 0) normA += Math.PI * 2;
+
+        let minDa = 100;
+        for (let p = 0; p < 5; p++) {
+            let pa = p * segment + topOff;
+            // Wrap diff
+            let diff = Math.abs(normA - pa);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            if (diff < minDa) minDa = diff;
+        }
+        // Linear interpolation for star edge radius
+        const t = minDa / (segment / 2);
+        const limitR = outerR * (1 - t) + innerR * t;
+
+        const rFinal = Math.random() * limitR;
+        const sx = rFinal * Math.cos(starA);
+        const sy = rFinal * Math.sin(starA) + starY;
+        const sz = (Math.random() - 0.5) * 10;
+
+        temp.push({
+            x: sx, y: sy, z: sz,
+            r: 1, g: 0.84, b: 0 // Gold
+        });
+    }
+
+    // 3. SPIRAL LIGHTS (Helix - Adjusted for Scale)
     for (let i = 0; i < lightCount; i++) {
         const t = i / lightCount;
         const y = -CONFIG.treeHeight / 2 + t * CONFIG.treeHeight * 0.95;
@@ -209,7 +274,7 @@ function generateTreeData() {
         temp.push({ x, y, z, r: colorObj.r, g: colorObj.g, b: colorObj.b });
     }
 
-    // 3. GIFT BOXES (Moved OUTSIDE the tree base)
+    // 4. GIFT BOXES (Moved OUTSIDE the tree base)
     const boxCount = 20;
     const particlesPerBox = Math.floor(giftCount / boxCount);
     for (let b = 0; b < boxCount; b++) {
@@ -376,6 +441,38 @@ function generateKissData() { generateEmojiToBuffer("💏", positionsKiss, color
 // Santa/Reindeer removed
 function generateLoveData() { generateTextToBuffer("I LOVE", "YOU", positionsLove, colorsLove); }
 
+function generateFireworksData() {
+    const temp = [];
+    const bursts = 7; // Number of explosions
+    const particlesPerBurst = CONFIG.particleCount / bursts;
+
+    for (let b = 0; b < bursts; b++) {
+        // Random center for each burst
+        const cx = (Math.random() - 0.5) * 600;
+        const cy = (Math.random() - 0.5) * 400;
+        const cz = (Math.random() - 0.5) * 200;
+        const color = new THREE.Color().setHSL(Math.random(), 1.0, 0.6); // Vivid random color
+
+        for (let i = 0; i < particlesPerBurst; i++) {
+            // Spherical explosion
+            const r = 10 + Math.random() * 150; // Radius of burst
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+
+            const x = cx + r * Math.sin(phi) * Math.cos(theta);
+            const y = cy + r * Math.sin(phi) * Math.sin(theta);
+            const z = cz + r * Math.cos(phi);
+
+            // Sparkling tips (white)
+            let rCol = color.r, gCol = color.g, bCol = color.b;
+            if (Math.random() > 0.9) { rCol = 1; gCol = 1; bCol = 1; }
+
+            temp.push({ x, y, z, r: rCol, g: gCol, b: bCol });
+        }
+    }
+    fillBuffer(temp, CONFIG.particleCount, positionsFireworks, colorsFireworks);
+}
+
 function generateEmojiToBuffer(emoji, targetPos, targetCol) {
     const cvs = document.createElement('canvas'); cvs.width = 300; cvs.height = 300;
     const ctx = cvs.getContext('2d');
@@ -471,14 +568,7 @@ function createObjects() {
     scene.add(particles);
 
     const sc = document.createElement('canvas'); sc.width = 60; sc.height = 60;
-    const ctx = sc.getContext('2d');
-    const sg = ctx.createRadialGradient(30, 30, 0, 30, 30, 30);
-    sg.addColorStop(0, '#fff'); sg.addColorStop(0.4, 'gold'); sg.addColorStop(1, 'transparent');
-    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(30, 30, 30, 0, Math.PI * 2); ctx.fill();
-    starSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.Texture(sc), color: 0xffff00 }));
-    starSprite.material.map.needsUpdate = true; starSprite.scale.set(40, 40, 1);
-    starSprite.position.y = CONFIG.treeHeight / 2 + 20;
-    scene.add(starSprite);
+    // starSprite creation removed
 }
 
 // --- GESTURE LOGIC ---
@@ -514,6 +604,8 @@ function detectGesture(lm, lm2) {
     if (wrist.y < indexTip.y && wrist.y < midTip.y) return 'DOWN';
     if (dist(thumbTip, indexTip) < 0.08 && midUp && ringUp && pinkyUp) return 'OK'; // Kiss
     if (dist(thumbTip, indexTip) < 0.08 && !midUp) return 'FINGER_HEART';
+    // SNAP: Thumb near Middle, Index Up (optional)
+    if (dist(thumbTip, midTip) < 0.06) return 'SNAP';
     if (!indexUp && !midUp && !ringUp && !pinkyUp && lm[4].x < lm[3].x) return 'THUMB_UP'; // Santa
 
     return 'UNKNOWN';
@@ -537,7 +629,10 @@ function changeGalleryImage(dir) {
     if (currentShape !== 'IMAGE') return;
     currentGalleryIndex = (currentGalleryIndex + dir + galleryBuffers.length) % galleryBuffers.length;
     const buf = galleryBuffers[currentGalleryIndex];
-    if (buf && buf.pos.length > 0) morphTo(buf.pos, buf.col);
+    if (buf && buf.pos.length > 0) {
+        // Use Swipe Transition
+        swipeTo(buf.pos, buf.col, dir);
+    }
 }
 
 function morphTo(targetPos, targetCol) {
@@ -675,13 +770,16 @@ function animate() {
                     // THUMB UP 👍 -> SANTA 🎅
                     morphTo(positionsSleigh, colorsSleigh); currentShape = 'SLEIGH';
 
-                    // COUPLE REMOVED (Again) ❌
-                    // } else if (lastGesture === 'VICTORY' && currentShape !== 'KISS') {
-                    //    // VICTORY ✌️ -> COUPLE 💏
-                    //    morphTo(positionsKiss, colorsKiss); currentShape = 'KISS';
+                } else if (lastGesture === 'VICTORY' && currentShape !== 'FIREWORKS') {
+                    // VICTORY ✌️ -> FIREWORKS 🎆
+                    morphTo(positionsFireworks, colorsFireworks); currentShape = 'FIREWORKS';
 
-                } else if ((lastGesture === 'HEART_HANDS' || lastGesture === 'FINGER_HEART' || lastGesture === 'ILY') && currentShape !== 'HEART') {
-                    // HEART / ILY 🫶🤟 -> HEART ❤️
+                } else if (lastGesture === 'ILY' && currentShape !== 'LOVE') {
+                    // ILY 🤟 -> I LOVE YOU 💖
+                    morphTo(positionsLove, colorsLove); currentShape = 'LOVE';
+
+                } else if ((lastGesture === 'HEART_HANDS' || lastGesture === 'FINGER_HEART') && currentShape !== 'HEART') {
+                    // HEART_HANDS 🫶 -> HEART ❤️
                     morphTo(positionsHeart, colorsHeart); currentShape = 'HEART';
 
                 } else if (lastGesture === 'FIST' && currentShape !== 'BOX') {
@@ -709,13 +807,13 @@ function animate() {
                 currentRotation.x += (targetRotation.x - currentRotation.x) * 0.1;
                 currentRotation.y += (targetRotation.y - currentRotation.y) * 0.1;
             }
-            starSprite.visible = (currentShape === 'TREE');
+            // starSprite.visible removed
         } else {
             // REMOVED AUTO-RESET to TREE. Shape will now persist.
             // if (currentShape !== 'TREE' && !isAnimating) {
             //    morphTo(positionsTree, colorsTree); currentShape = 'TREE';
             // }
-            starSprite.visible = true;
+            // starSprite.visible removed
             autoRotateAngle += 0.003;
             currentRotation.y = autoRotateAngle;
             currentRotation.x += (0 - currentRotation.x) * 0.05;
@@ -726,6 +824,70 @@ function animate() {
         particles.rotation.x = currentRotation.x;
     }
     composer.render();
+}
+
+function swipeTo(targetPos, targetCol, dir) {
+    if (!particles || isAnimating || !targetPos) return;
+    isAnimating = true;
+
+    // Direction: -1 (Next) => Swipe Left (Particles move Left)
+    // Direction: 1 (Prev) => Swipe Right (Particles move Right)
+    const exitOffset = dir * -1000; // Move current OUT to this X
+    const enterOffset = dir * 1000; // New particles start at this X
+
+    const pos = particles.geometry.attributes.position.array;
+    const col = particles.geometry.attributes.color.array;
+    const startPos = Float32Array.from(pos);
+
+    // 1. EXIT PHASE (Slide Out)
+    const tweenExit = new TWEEN.Tween({ t: 0 })
+        .to({ t: 1 }, 800)
+        .easing(TWEEN.Easing.Cubic.In)
+        .onUpdate((obj) => {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                // Move X only similar to slide
+                pos[i * 3] = startPos[i * 3] + exitOffset * obj.t;
+                // Add slight random z/y noise for wind effect
+                pos[i * 3 + 1] += (Math.random() - 0.5) * 2;
+                pos[i * 3 + 2] += (Math.random() - 0.5) * 2;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+        });
+
+    // 2. ENTER PHASE (Slide In)
+    const tweenEnter = new TWEEN.Tween({ t: 0 })
+        .to({ t: 1 }, 1000)
+        .easing(TWEEN.Easing.Cubic.Out)
+        .onStart(() => {
+            // Reset particles to Start Position for Enter
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                const tx = targetPos[i % targetPos.length]?.x || 0;
+                pos[i * 3] = tx + enterOffset; // Start from opposite side
+                // Y/Z are target
+                pos[i * 3 + 1] = targetPos[i % targetPos.length]?.y || 0;
+                pos[i * 3 + 2] = targetPos[i % targetPos.length]?.z || 0;
+
+                // Set Color Immediately
+                const targetR = targetCol[(i % targetPos.length) * 3];
+                const targetG = targetCol[(i % targetPos.length) * 3 + 1];
+                const targetB = targetCol[(i % targetPos.length) * 3 + 2];
+                col[i * 3] = targetR; col[i * 3 + 1] = targetG; col[i * 3 + 2] = targetB;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+        })
+        .onUpdate((obj) => {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                const tx = targetPos[i % targetPos.length]?.x || 0;
+                // Move from EnterOffset to 0 (Target X)
+                pos[i * 3] = (tx + enterOffset) + (tx - (tx + enterOffset)) * obj.t;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+        })
+        .onComplete(() => { isAnimating = false; });
+
+    tweenExit.chain(tweenEnter);
+    tweenExit.start();
 }
 
 // --- NATIVE CAMERA & AI ---
@@ -777,7 +939,10 @@ async function setupAI() {
         } catch (e) {
             console.warn("Auto-play blocked, waiting for interaction", e);
             if (loadText) loadText.innerHTML = "CLICK TO START<br>(Browser Blocked AutoPlay)";
-            document.body.addEventListener('click', () => { vid.play(); }, { once: true });
+            document.body.addEventListener('click', () => {
+                vid.play();
+                if (player && typeof player.playVideo === 'function') player.playVideo();
+            }, { once: true });
         }
 
         const l = document.getElementById('loading');
@@ -848,4 +1013,22 @@ function createSnowflakes() {
 }
 
 // Start the Application
+// Start the Application
 init();
+
+// Aggressive Auto-Play Fallback
+const interactions = ['click', 'touchstart', 'keydown'];
+function tryPlayMusic() {
+    if (player && player.getPlayerState() !== 1) {
+        player.playVideo();
+        console.log("User Interaction -> Attempting Play...");
+        // Check 500ms later if it worked
+        setTimeout(() => {
+            if (player.getPlayerState() === 1) {
+                console.log("Success! Removing listeners.");
+                interactions.forEach(evt => document.body.removeEventListener(evt, tryPlayMusic));
+            }
+        }, 500);
+    }
+}
+interactions.forEach(evt => document.body.addEventListener(evt, tryPlayMusic));
