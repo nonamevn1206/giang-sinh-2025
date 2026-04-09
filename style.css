@@ -1,242 +1,248 @@
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@700&display=swap');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
 body {
-    margin: 0;
-    overflow: hidden;
-    background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
-    /* Deep space look */
-    font-family: 'Cinzel', serif;
-}
-
-.mic-btn {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    z-index: 101;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    padding: 8px 16px;
-    cursor: pointer;
-    font-family: inherit;
-    backdrop-filter: blur(5px);
-    transition: all 0.3s;
-}
-
-.mic-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.mic-btn.active {
-    background: rgba(0, 255, 0, 0.2);
-    border-color: #0f0;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
-}
-
-#loading {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
+    font-family: 'Quicksand', sans-serif;
+    /* Nền hồng phấn mềm mại, thay cho vũ trụ tối màu gây đau mắt */
+    background: linear-gradient(135deg, #ffd1dc 0%, #ffc0cb 100%);
+    min-height: 100vh;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 999;
-    color: #ffd700;
-    /* Gold */
-    transition: opacity 1s ease-out;
-}
-
-.spinner {
-    width: 80px;
-    height: 80px;
-    border: 4px solid rgba(255, 215, 0, 0.1);
-    border-top: 4px solid #ffd700;
-    border-radius: 50%;
-    animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
-    margin-bottom: 20px;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-#loading-text {
-    font-size: 1.5rem;
-    text-align: center;
-    letter-spacing: 2px;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 0.8;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
-}
-
-/* Main Title */
-#title-container {
-    position: absolute;
-    top: 5%;
-    width: 100%;
-    text-align: center;
-    pointer-events: none;
-    z-index: 5;
-    mix-blend-mode: screen;
-}
-
-h1.merry-text {
-    font-family: 'Great Vibes', cursive;
-    background: linear-gradient(to right, #ff0000, #ff4d4d, #ffffff, #ff4d4d, #ff0000);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-size: 6rem;
-    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
-    margin: 0;
-    animation: shimmer 3s infinite linear;
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: -200% center;
-    }
-
-    100% {
-        background-position: 200% center;
-    }
-}
-
-/* Camera (Small Top-Right) */
-#camera-container {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 30px;
-    /* Micro Size */
-    height: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 4px;
     overflow: hidden;
-    z-index: 1000;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
-    backdrop-filter: blur(5px);
-    transition: all 0.3s ease;
-    cursor: pointer;
+    color: #4a4a4a; /* Đổi màu chữ sang tối để dễ nhìn trên nền hồng */
+    transition: background 2s ease-in-out;
 }
 
-#camera-container:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-    border-color: #0f0;
+/* Chuyển nền khi vào Stage 3 - Hồng rực lãng mạn nhẹ nhàng */
+body.mode-confession {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ff69b4 100%);
 }
 
-#camera-feed {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1);
+/* Celebration Mode - Không còn nháy giật mắt */
+body.mode-celebration {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
 }
 
-/* --- SNOWFALL EFFECT --- */
-#snow-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+
+/* Các stage */
+.stage {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out, transform 1.5s ease;
     pointer-events: none;
-    /* Click through */
-    z-index: 5;
-    /* Above video, below some UI */
+    z-index: 10;
+}
+
+.stage.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+.stage.hidden { opacity: 0; pointer-events: none; transform: scale(0.9); display: flex !important; z-index: 0; }
+
+/* Thẻ Glass - Chỉnh lại trong suốt & màu nhạt cho phù hợp nền hồng */
+.glass {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 32px 0 rgba(255, 105, 135, 0.2);
+}
+
+.card { padding: 50px 40px; border-radius: 24px; max-width: 500px; width: 90%; text-align: center; }
+
+h1 { color: #ff4757; font-size: 32px; margin-bottom: 20px; line-height: 1.4; }
+p { font-size: 18px; margin-bottom: 30px; line-height: 1.6; color: #5a5a5a; }
+
+.primary-btn {
+    background: linear-gradient(45deg, #ff4757, #ff6b81);
+    color: white; padding: 15px 30px; font-size: 20px;
+    border-radius: 50px; border: none; cursor: pointer; font-weight: bold;
+    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); transition: all 0.3s ease;
+}
+
+/* HUD phần quét tay */
+.hud { position: absolute; bottom: 40px; padding: 20px 40px; border-radius: 20px; text-align: center; max-width: 600px; }
+.hud h2 { font-size: 24px; color: #ff4757; margin-bottom: 5px; }
+.magic-meter-container {
+    width: 100%; height: 10px; background: rgba(255,255,255,0.8); border-radius: 10px;
+    overflow: hidden; margin: 10px 0; position: relative;
+}
+.magic-meter-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #ff4757, #ff1493);
+    transition: width 0.2s; box-shadow: 0 0 10px rgba(255,71,87,0.5);
+}
+.webcam-container {
+    position: absolute; top: 10px; right: 10px; width: 30px; height: 22px;
+    border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.4);
+    pointer-events: none; opacity: 0.4; box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+video#webcam-preview { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.8; }
+
+/* -------------------------------------
+   GIAI ĐOẠN 3 MAX SETTING
+   ------------------------------------- */
+
+.holographic-card {
+    position: relative;
+    padding: 60px 40px;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 20px 50px rgba(255, 105, 135, 0.3);
+    max-width: 650px;
+    width: 95%;
+    text-align: center;
     overflow: hidden;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    transition: transform 0.1s ease;
 }
 
-.snowflake {
+#reveal-image-container {
+    margin: 0 auto 30px;
+    width: 200px; height: 200px;
+    transition: transform 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#reveal-image-container img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+    border: 5px solid white;
+    box-shadow: 0 10px 30px rgba(255, 105, 135, 0.4);
+    transition: all 0.5s ease;
+}
+.scale-zero { transform: scale(0); opacity: 0; }
+.elastic-bounce { transform: scale(1); opacity: 1; }
+
+.text-container { min-height: 100px; display: flex; align-items: center; justify-content: center; }
+
+/* Text êm dịu, không rực neon để đỡ mỏi mắt */
+.neon-text {
+    font-size: 38px;
+    font-family: 'Dancing Script', cursive;
+    color: #ff1493;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    line-height: 1.3;
+}
+.typing-cursor::after { content: '|'; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* BUTTONS */
+.buttons { margin-top: 30px; display: flex; justify-content: center; gap: 30px; position: relative; }
+.btn-wrapper { position: relative; display: inline-block; }
+
+.yes-btn-max {
+    background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+    color: white; padding: 18px 45px; font-size: 24px; font-weight: bold; font-family: inherit;
+    border-radius: 50px; border: 2px solid white;
+    cursor: pointer; box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4);
+    transition: transform 0.3s; position: relative; z-index: 2;
+}
+.yes-btn-max:hover { transform: scale(1.1); box-shadow: 0 10px 30px rgba(255, 71, 87, 0.6); }
+
+/* Vòng rung nhẹ nhàng */
+.pulse-ring {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 100%; height: 100%; border-radius: 50px; box-shadow: 0 0 10px rgba(255,105,135,0.5);
+    border: 2px solid #ff9a9e; z-index: 1; animation: pulseRing 2s infinite ease-out;
+}
+.pulse-ring.delay-1 { animation-delay: 1s; }
+@keyframes pulseRing {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+.no-btn-max {
+    background: white; color: #ff4757;
+    padding: 18px 45px; font-size: 22px; font-weight: bold;  font-family: inherit;
+    border-radius: 50px; border: 1px solid rgba(255,71,87,0.3);
+    cursor: auto; transition: background 0.3s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 99;
+}
+
+.fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+@keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.happy-text {
+    font-family: 'Dancing Script', cursive; font-size: 52px; font-weight: 700;
+    color: #ff1493; margin-top: 20px;
+    animation: gentlePulse 2s infinite alternate;
+}
+@keyframes gentlePulse {
+    0% { transform: scale(1); text-shadow: 0 0 10px white; }
+    100% { transform: scale(1.05); text-shadow: 0 0 20px white; }
+}
+
+.hidden-element { display: none !important; }
+
+/* Pháo hoa nhẹ nhàng Dịu Mắt */
+.mega-firework {
+    position: absolute; border-radius: 50%; pointer-events: none;
+    animation: explodeFW Soft 2s ease-out forwards;
+}
+@keyframes explodeFW {
+    0% { transform: translate(-50%, -50%) scale(0.1); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scaleX(var(--sx)) scaleY(var(--sy)); opacity: 0; }
+}
+
+.falling-heart {
+    position: absolute; pointer-events: none;
+    font-size: 30px; animation: fallHeart linear forwards;
+}
+@keyframes fallHeart {
+    0% { transform: translateY(-50px) rotate(0deg); opacity: 0.8; }
+    100% { transform: translateY(110vh) rotate(180deg); opacity: 0; }
+}
+
+/* Hiệu ứng khi nhấp / chạm vào màn hình (Trái tim to bự, Nụ hôn) */
+.click-animation {
     position: absolute;
-    top: -10vh;
-    color: white;
-    font-size: 1em;
-    opacity: 0.8;
-    user-select: none;
-    cursor: default;
-    /* Composite animation: Vertical Fall + Horizontal Sway */
-    animation-name: fall, sway;
-    animation-timing-function: linear, ease-in-out;
-    animation-iteration-count: infinite, infinite;
-    animation-play-state: running, running;
-}
-
-@keyframes fall {
-    0% {
-        top: -10vh;
-    }
-
-    100% {
-        top: 110vh;
-    }
-}
-
-@keyframes sway {
-    0% {
-        transform: translateX(0px) rotate(0deg);
-    }
-
-    25% {
-        transform: translateX(20px) rotate(45deg);
-    }
-
-    50% {
-        transform: translateX(0px) rotate(90deg);
-    }
-
-    75% {
-        transform: translateX(-20px) rotate(135deg);
-    }
-
-    100% {
-        transform: translateX(0px) rotate(180deg);
-    }
-}
-
-/* --- MAGIC TRAIL --- */
-.trail-sparkle {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: radial-gradient(circle, #fff 0%, gold 100%);
-    border-radius: 50%;
     pointer-events: none;
-    z-index: 9999;
-    box-shadow: 0 0 10px gold;
-    animation: fadeTrail 0.8s linear forwards;
+    transform: translate(-50%, -50%) scale(0.1);
+    font-size: 60px; /* Cỡ bự khổng lồ */
+    animation: clickPop 1.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+    z-index: 10000;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
 }
 
-@keyframes fadeTrail {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
+@keyframes clickPop {
+    0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
+    50% { transform: translate(-50%, -100px) scale(1.5); opacity: 0.9; }
+    100% { transform: translate(-50%, -150px) scale(2); opacity: 0; }
+}
 
-    100% {
-        transform: scale(0);
-        opacity: 0;
-    }
+/* -------------------------------------
+   GIAI ĐOẠN 4 MEGA MOA MOA
+   ------------------------------------- */
+.ultimate-card { text-align: center; z-index: 100; }
+
+.mega-text {
+    font-size: 80px; font-family: 'Dancing Script', cursive; color: #fff;
+    text-shadow: 0 0 20px #ff0844, 0 0 40px #ff0844, 0 0 60px #ffb199;
+    margin: 20px 0;
+}
+
+.kiss-text {
+    font-size: 100px; color: #ff1493;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px #ff1493, 0 0 80px #ff1493;
+}
+
+.bounce-continuous { animation: megaBounce 1.5s infinite alternate cubic-bezier(0.5, 0.05, 1, 0.5); }
+.shake-continuous { animation: shakePulse 0.5s infinite alternate; }
+
+@keyframes megaBounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-40px) scale(1.1); }
+}
+
+@keyframes shakePulse {
+    0% { transform: rotate(-5deg) scale(1); }
+    100% { transform: rotate(5deg) scale(1.2); }
 }
