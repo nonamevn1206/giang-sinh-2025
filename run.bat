@@ -1,9 +1,8 @@
 @echo off
-echo ========================================================
-echo Dang khoi dong may chu cuc bo de cap quyen Camera...
-echo ========================================================
-echo Hay mo trinh duyet web (Chrome/Edge) va truy cap vao duong link:
-echo http://localhost:8000
-echo ========================================================
-python -m http.server 8000
+echo ==============================================
+echo KHOI DONG WEB MINECRAFT CLONE
+echo ==============================================
+echo Mo trinh duyet va vao http://localhost:8080
+echo Sau do Click chuot vao bang den de thoa suc sang tao nhe!
+python -m http.server 8080
 pause
